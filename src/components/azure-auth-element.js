@@ -6,7 +6,10 @@ import {msalConfig, loginRequest} from './authConfig';
 
 class AzureAuthElement extends LitElement {
   static properties = {
-    token: {type: String}
+    idToken: {type: String},
+    token: {type: String},
+    displayName: {type: String},
+    data: { type: Array },
   };
 
   static styles = css`
@@ -38,6 +41,7 @@ class AzureAuthElement extends LitElement {
   constructor() {
     super();
     this.msalInstance = null;
+    this.data = [];
   }
 
   firstUpdated() {
@@ -50,8 +54,8 @@ class AzureAuthElement extends LitElement {
       const authResult = await this.msalInstance.loginPopup({});
       console.log('Authentication successful', authResult);
       if (authResult.idToken) {
-        console.log(authResult.accessToken);
         this.token = authResult.accessToken;
+        this.idToken = authResult.idToken;
         this.fetchUserDetails(this.token);
       }
     } catch (error) {
@@ -61,7 +65,7 @@ class AzureAuthElement extends LitElement {
 
   async fetchUserDetails(token) {
     try {
-      const response = await fetch(graphConfig.graphMeEndpoint, {
+      const response = await fetch("https://graph.microsoft.com/v1.0/me", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -69,7 +73,7 @@ class AzureAuthElement extends LitElement {
 
       if (response.ok) {
         const userData = await response.json();
-        //console.log(userData)
+        console.log(userData)
         this.displayName = userData.displayName;
         this.renderUserDetails(userData);
       } else {
@@ -92,7 +96,30 @@ class AzureAuthElement extends LitElement {
     // Sign the user out
     await this.msalInstance.logoutPopup();
     this.token = ''; // Clear the token
-    //this.displayName = ''; // Clear user information
+    this.displayName = ''; // Clear user information
+  }
+
+  async fetchData() {
+
+    this.data = await this.fetchDataFromBackend(this.idToken);
+  }
+
+  async fetchDataFromBackend(idToken) {
+    console.log("ID Token: "+idToken);
+    const response = await fetch('http://localhost:8080/api/data', {
+      headers: {
+        Authorization: `Bearer ${idToken}`,
+      },
+    });
+
+    if (response.ok) {
+      const backendData = await response.json();
+        console.log(backendData)
+      return backendData;
+    } else {
+      console.error('Error fetching data:', response.status);
+      return [];
+    }
   }
 
   render() {
@@ -101,7 +128,31 @@ class AzureAuthElement extends LitElement {
         <div class="centered-container">
           <p>Welcome, ${this.displayName}!</p>
           <button @click="${this.logout}">Logout</button>
-          <div id="userDetails"></div>
+          <br/>
+          <button @click="${this.fetchData}">Fetch Data</button>
+          <!-- <div id="userDetails"></div> -->
+          <br/>
+          ${this.data.length
+        ? html`
+            <table style="border: 1px solid black;">
+              <thead>
+                <tr>
+                  <th>City</th>
+
+                </tr>
+              </thead>
+              <tbody>
+                ${this.data.map(
+                  (item) => html`
+                    <tr>
+                      <td>${item}</td>
+                    </tr>
+                  `
+                )}
+              </tbody>
+            </table>
+          `
+        : ''}
         </div>
       `;
     } else {

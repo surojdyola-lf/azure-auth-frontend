@@ -12,6 +12,7 @@
   "type": "module",
   "dependencies": {
     "@azure/msal-browser": "^3.4.0",
+    "@vaadin/router": "^1.7.5",
     "lit": "^3.0.1"
   },
   "devDependencies": {
